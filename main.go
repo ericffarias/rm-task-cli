@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -45,7 +46,21 @@ func Run(args []string) {
 			fmt.Println(err.Error())
 		}
 		return
+	case "list":
+		tasks, err := listTasks(args, FILE_NAME)
+		if err != nil {
+			fmt.Println("Erro na operação de filteragem:", err.Error())
+			return
+		}
+
+		fmt.Printf("%v registros encontrados.\n", len(tasks))
+		fmt.Printf("\t  Id Estatus \t Descrição\n")
+		for _, t := range tasks {
+			fmt.Printf("\t- %02d [%v] \t %v\n", t.Id, t.Status, t.Description)
+		}
+		return
 	}
+
 }
 
 func addTask(args []string, filename string) error {
@@ -83,6 +98,48 @@ func addTask(args []string, filename string) error {
 	}
 
 	return nil
+}
+
+func filter[T any](s []T, predicate func(T) bool) []T {
+	var result []T
+	for _, v := range s {
+		if predicate(v) {
+			result = append(result, v)
+		}
+	}
+
+	return result
+}
+
+func listTasks(args []string, filename string) ([]Task, error) {
+	database, err := readDB(filename)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(args) < 3 {
+		return database.Tasks, nil
+	}
+
+	listBy := args[2]
+
+	var isValid bool = false
+	for _, v := range []string{"done", "todo", "in-progress"} {
+		if strings.EqualFold(listBy, v) {
+			isValid = true
+			break
+		}
+	}
+	if !isValid {
+		return nil, fmt.Errorf("Operção de listagem por \"%v\" não encontrada", listBy)
+	}
+
+	filteredList := filter(database.Tasks, func(t Task) bool {
+		return strings.EqualFold(t.Status, listBy)
+	})
+
+	return filteredList, nil
 }
 
 func saveDatabase(db DB, filename string) error {

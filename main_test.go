@@ -153,3 +153,78 @@ func TestAddTask(t *testing.T) {
 		}
 	})
 }
+
+func TestListTasks(t *testing.T) {
+	timestamp := time.Now()
+	DBTest := DB{
+		IdCount: 8,
+		Tasks: []Task{
+			{Id: 1, Description: "Tarefa concluída 1", Status: "done", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 2, Description: "Tarefa concluída 2", Status: "done", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 3, Description: "Tarefa concluída 3", Status: "done", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 4, Description: "Tarefa pendente 1", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 5, Description: "Tarefa pendente 2", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 6, Description: "Tarefa pendente 3", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 7, Description: "Tarefa pendente 4", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 8, Description: "Tarefa em andamento", Status: "in-progress", CreatedAt: timestamp, UpdatedAt: timestamp},
+		},
+	}
+
+	filterByStatus := func(args []string, expect int, filename string, t *testing.T) {
+		filterBy := args[2]
+		rTask, err := listTasks(args, filename)
+		if err != nil {
+			t.Errorf("Erro no retorno da listagem de tarefas em [%v]: %v", filterBy, err)
+		}
+		if len(rTask) != expect {
+			t.Errorf("Número de tarefas em [%v] diferente do esperado: got: %v, want: %v", filterBy, len(rTask), expect)
+		}
+	}
+	t.Run("deve ser capaz de listar todas as tarefas", func(t *testing.T) {
+		args := []string{"./task-cli", "list"}
+
+		filename := filepath.Join(t.TempDir(), FILE_NAME)
+		if err := saveDatabase(DBTest, filename); err != nil {
+			t.Error("Não foi possível escrever o mock no arquivo.", err)
+		}
+
+		rTask, err := listTasks(args, filename)
+		if err != nil {
+			t.Error("Erro no retorno da listagem todas as tarefas:", err)
+		}
+		if len(rTask) != DBTest.IdCount {
+			t.Errorf("Número de tarefas diferente do esperado. got: %v want: %v", len(rTask), DBTest.IdCount)
+		}
+	})
+
+	t.Run("deve ser capaz de listar tarefas com status [todo]", func(t *testing.T) {
+		args := []string{"./task-cli", "list", "todo"}
+
+		filename := filepath.Join(t.TempDir(), FILE_NAME)
+		if err := saveDatabase(DBTest, filename); err != nil {
+			t.Error("Não foi possível escrever o mock no arquivo.", err)
+		}
+
+		filterByStatus(args, 4, filename, t)
+	})
+	t.Run("deve ser capaz de listar tarefas com status [done]", func(t *testing.T) {
+		args := []string{"./task-cli", "list", "done"}
+
+		filename := filepath.Join(t.TempDir(), FILE_NAME)
+		if err := saveDatabase(DBTest, filename); err != nil {
+			t.Error("Não foi possível escrever o mock no arquivo.", err)
+		}
+
+		filterByStatus(args, 3, filename, t)
+	})
+	t.Run("deve ser capaz de listar tarefas em [in-progress]", func(t *testing.T) {
+		args := []string{"./task-cli", "list", "in-progress"}
+
+		filename := filepath.Join(t.TempDir(), FILE_NAME)
+		if err := saveDatabase(DBTest, filename); err != nil {
+			t.Error("Não foi possível escrever o mock no arquivo.", err)
+		}
+
+		filterByStatus(args, 1, filename, t)
+	})
+}
