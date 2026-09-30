@@ -228,3 +228,81 @@ func TestListTasks(t *testing.T) {
 		filterByStatus(args, 1, filename, t)
 	})
 }
+
+func TestDeleteTask(t *testing.T) {
+	timestamp := time.Now()
+	DB := DB{
+		IdCount: 5,
+		Tasks: []Task{
+			{Id: 1, Description: "Tarefa mock 1", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 2, Description: "Tarefa mock 2", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 3, Description: "Tarefa mock 3", Status: "in-progress", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 4, Description: "Tarefa mock 4", Status: "done", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 5, Description: "Tarefa mock 5", Status: "done", CreatedAt: timestamp, UpdatedAt: timestamp},
+		},
+	}
+
+	tCount := func(filename string) int {
+		db, err := readDB(filename)
+		if err != nil {
+			t.Errorf("Não foi possivel acessar arquivo. %v", err)
+		}
+
+		return len(db.Tasks)
+	}
+
+	t.Run("deve ser capaz de remover um id que existe", func(t *testing.T) {
+		args := []string{"./task-cli", "delete", "1"}
+		filename := filepath.Join(t.TempDir(), FILE_NAME)
+		saveDatabase(DB, filename)
+
+		before := tCount(filename)
+
+		if _, err := deleteTask(args, filename); err != nil {
+			t.Error(err)
+		}
+
+		after := tCount(filename)
+
+		if after != before-1 {
+			t.Errorf("Registro não removido. got: %v, want: %v", after, before-1)
+		}
+	})
+
+	t.Run("não deve remover id que não existe", func(t *testing.T) {
+		args := []string{"./task-cli", "delete", "500"}
+
+		filename := filepath.Join(t.TempDir(), FILE_NAME)
+		saveDatabase(DB, filename)
+
+		before := tCount(filename)
+
+		if _, err := deleteTask(args, filename); err == nil {
+			t.Error("Um erro era esperado. Não é permitido deletar task cujo id não existe.")
+		}
+
+		after := tCount(filename)
+		if before != after {
+			t.Errorf("Número de task diferente. got: %v, want: %v", after, before)
+		}
+	})
+
+	t.Run("não deve remover se id não fornecido", func(t *testing.T) {
+		filename := filepath.Join(t.TempDir(), FILE_NAME)
+
+		args := []string{"./task-cli", "delete"}
+		saveDatabase(DB, filename)
+
+		before := tCount(filename)
+
+		if _, err := deleteTask(args, filename); err == nil {
+			t.Error("Um erro era esperado. Não é permitido quando id não informado")
+		}
+
+		after := tCount(filename)
+		if before != after {
+			t.Errorf("Número de task diferente. got: %v, want: %v", after, before)
+		}
+	})
+
+}

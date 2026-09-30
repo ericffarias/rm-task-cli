@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -59,8 +61,51 @@ func Run(args []string) {
 			fmt.Printf("\t- %02d [%v] \t %v\n", t.Id, t.Status, t.Description)
 		}
 		return
+	case "delete":
+		if task, err := deleteTask(args, FILE_NAME); err != nil {
+			fmt.Println("Erro na tentativa de remoção:", err)
+		} else {
+			fmt.Printf("task [%v %v] removida.\n", task.Id, task.Description)
+		}
+
 	}
 
+}
+
+func deleteTask(args []string, filename string) (Task, error) {
+	var removedTask Task
+
+	if len(args) < 3 {
+		return removedTask, errors.New("Id para remoção não informado.")
+	}
+
+	id, err := strconv.Atoi(args[2])
+	if err != nil {
+		return removedTask, fmt.Errorf("Id informado deve ser número inteiro %v", err)
+	}
+
+	database, err := readDB(filename)
+	if err != nil {
+		return removedTask, err
+	}
+
+	if i := slices.IndexFunc(database.Tasks, func(t Task) bool {
+		return t.Id == id
+	}); i >= 0 {
+		removedTask = database.Tasks[i]
+	} else {
+		return removedTask, fmt.Errorf("Id %v não encontrado.", id)
+	}
+
+	database.Tasks = slices.DeleteFunc(database.Tasks, func(t Task) bool {
+		return t.Id == id
+	})
+
+	if err := saveDatabase(database, filename); err != nil {
+		return removedTask, err
+	}
+
+	return removedTask, nil
 }
 
 func addTask(args []string, filename string) error {
