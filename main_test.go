@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -305,4 +308,57 @@ func TestDeleteTask(t *testing.T) {
 		}
 	})
 
+}
+func TestUpdateTask(t *testing.T) {
+	timestamp := time.Now()
+	DBTest := DB{
+		IdCount: 3,
+		Tasks: []Task{
+			{Id: 1, Description: "Primeira tarefa", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 2, Description: "Segunda tarefa", Status: "in-progress", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 3, Description: "Terceira tarefa", Status: "done", CreatedAt: timestamp, UpdatedAt: timestamp},
+		},
+	}
+
+	t.Run("deve ser capaz de alterar uma task que existe", func(t *testing.T) {
+		filename := filepath.Join(t.TempDir(), FILE_NAME)
+		saveDatabase(DBTest, filename)
+
+		newDesc := "escovar os dentes"
+		args := []string{"./task-cli", "update", "2", newDesc}
+		if err := updateTask(args, filename); err != nil {
+			t.Error("Task não atualizada", err)
+		}
+
+		updatedDB, _ := readDB(filename)
+
+		taskId, _ := strconv.Atoi(args[2])
+		taskIndex := slices.IndexFunc(updatedDB.Tasks, func(tsk Task) bool {
+			return tsk.Id == taskId
+		})
+		desc := updatedDB.Tasks[taskIndex].Description
+		if !strings.EqualFold(desc, newDesc) {
+			t.Errorf("Tarefa não foi atualizada. got: \"%v\", want: \"%v\"", desc, newDesc)
+		}
+	})
+
+	t.Run("deve recusar atualizar quando descrição não informada", func(t *testing.T) {
+		filename := filepath.Join(t.TempDir(), FILE_NAME)
+		saveDatabase(DBTest, filename)
+
+		args := []string{"./task-cli", "update", "2"}
+		if err := updateTask(args, filename); err == nil {
+			t.Error("Descrição não informada, um erro era esperado.")
+		}
+	})
+
+	t.Run("deve recusar atualizar quando id não informado", func(t *testing.T) {
+		filename := filepath.Join(t.TempDir(), FILE_NAME)
+		saveDatabase(DBTest, filename)
+
+		args := []string{"./task-cli", "update", "banhar os cachorros"}
+		if err := updateTask(args, filename); err == nil {
+			t.Error("Id não informado, um erro era esperado.")
+		}
+	})
 }

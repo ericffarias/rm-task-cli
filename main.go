@@ -57,6 +57,7 @@ func Run(args []string) {
 
 		fmt.Printf("%v registros encontrados.\n", len(tasks))
 		fmt.Printf("\t  Id Estatus \t Descrição\n")
+
 		for _, t := range tasks {
 			fmt.Printf("\t- %02d [%v] \t %v\n", t.Id, t.Status, t.Description)
 		}
@@ -67,9 +68,45 @@ func Run(args []string) {
 		} else {
 			fmt.Printf("task [%v %v] removida.\n", task.Id, task.Description)
 		}
-
+		return
+	case "update":
+		if err := updateTask(args, FILE_NAME); err != nil {
+			fmt.Println("Erro na atualização:", err)
+		}
+		return
 	}
 
+}
+
+func updateTask(args []string, filename string) error {
+	if len(args) < 4 {
+		return errors.New("Para atualizar a tarefa é necessario informa id e nova descrição.")
+	}
+
+	description := args[3]
+	id, err := strconv.Atoi(args[2])
+	if err != nil {
+		return err
+	}
+
+	database, err := readDB(filename)
+	if err != nil {
+		return err
+	}
+
+	taskIdx := slices.IndexFunc(database.Tasks, func(t Task) bool {
+		return t.Id == id
+	})
+
+	nTask := &database.Tasks[taskIdx]
+	nTask.Description = description
+	nTask.UpdatedAt = time.Now()
+
+	if err := saveDatabase(database, filename); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func deleteTask(args []string, filename string) (Task, error) {
