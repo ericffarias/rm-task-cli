@@ -12,7 +12,7 @@ import (
 )
 
 func TestDatabase(t *testing.T) {
-	t.Run("deve ser capaz de salvar e ler dados do tipo DB de um arquivo .json", func(t *testing.T) {
+	t.Run("should be able to save and read DB data from a .json file", func(t *testing.T) {
 		timestamp := time.Now()
 		dataToSave := DB{
 			IdCount: 1,
@@ -27,132 +27,132 @@ func TestDatabase(t *testing.T) {
 		tempFileUrl := filepath.Join(t.TempDir(), FILE_NAME)
 
 		if err := saveDatabase(dataToSave, tempFileUrl); err != nil {
-			t.Fatalf("Tentativa de salvar DB falhou: %v", err)
+			t.Fatalf("Attempt to save DB failed: %v", err)
 		}
 
-		savedData, err := readDB(tempFileUrl)
+		savedData, err := readDatabase(tempFileUrl)
 		if err != nil {
-			t.Fatalf("Tentativa de ler DB falhou: %v", err)
+			t.Fatalf("Attempt to read DB failed: %v", err)
 		}
 		if savedData.IdCount != dataToSave.IdCount {
-			t.Errorf("Contador de IDs diferente: got %d, want %d", savedData.IdCount, dataToSave.IdCount)
+			t.Errorf("Different ID counter: got %d, want %d", savedData.IdCount, dataToSave.IdCount)
 		}
 		if len(savedData.Tasks) != len(dataToSave.Tasks) {
-			t.Fatalf("Quantidade de tarefas diferente: got %d, want %d", len(savedData.Tasks), len(dataToSave.Tasks))
+			t.Fatalf("Different number of tasks: got %d, want %d", len(savedData.Tasks), len(dataToSave.Tasks))
 		}
 
 		got, want := savedData.Tasks[0], dataToSave.Tasks[0]
 		if got.Id != want.Id || got.Description != want.Description || got.Status != want.Status ||
 			!got.CreatedAt.Equal(want.CreatedAt) || !got.UpdatedAt.Equal(want.UpdatedAt) {
-			t.Errorf("Dados da tarefa salvos diferentes: got %v, want %v", got, want)
+			t.Errorf("Saved task data differ: got %v, want %v", got, want)
 		}
 	})
 
-	t.Run("deve inicializar um arquivo vazio", func(t *testing.T) {
+	t.Run("should initialize an empty file", func(t *testing.T) {
 		filename := filepath.Join(t.TempDir(), FILE_NAME)
 		if err := os.WriteFile(filename, nil, PERMISSIONS); err != nil {
-			t.Fatalf("Não foi possível criar arquivo vazio: %v", err)
+			t.Fatalf("Could not create empty file: %v", err)
 		}
 
-		database, err := readDB(filename)
+		database, err := readDatabase(filename)
 		if err != nil {
-			t.Fatalf("readDB() falhou para arquivo vazio: %v", err)
+			t.Fatalf("readDatabase() failed for empty file: %v", err)
 		}
 		if database.IdCount != 0 || len(database.Tasks) != 0 {
-			t.Errorf("Banco inicializado diferente do esperado: got %+v", database)
+			t.Errorf("Database initialized differently than expected: got %+v", database)
 		}
 
 		content, err := os.ReadFile(filename)
 		if err != nil {
-			t.Fatalf("Não foi possível ler o arquivo inicializado: %v", err)
+			t.Fatalf("Could not read the initialized file: %v", err)
 		}
 		if !json.Valid(content) {
-			t.Errorf("O conteúdo inicializado não é JSON válido: %q", content)
+			t.Errorf("The initialized content is not valid JSON: %q", content)
 		}
 	})
 
-	t.Run("deve retornar erro para JSON inválido", func(t *testing.T) {
+	t.Run("should return an error for invalid JSON", func(t *testing.T) {
 		filename := filepath.Join(t.TempDir(), FILE_NAME)
 		if err := os.WriteFile(filename, []byte("{"), PERMISSIONS); err != nil {
-			t.Fatalf("Não foi possível criar arquivo inválido: %v", err)
+			t.Fatalf("Could not create invalid file: %v", err)
 		}
-		if _, err := readDB(filename); err == nil {
-			t.Error("readDB() deveria retornar erro para JSON inválido")
+		if _, err := readDatabase(filename); err == nil {
+			t.Error("readDatabase() should return an error for invalid JSON")
 		}
 	})
 }
 
 func TestAddTask(t *testing.T) {
-	t.Run("deve ser capaz de criar uma tarefa", func(t *testing.T) {
+	t.Run("should be able to create a task", func(t *testing.T) {
 		filename := filepath.Join(t.TempDir(), FILE_NAME)
-		descriptions := []string{"Primeira tarefa", "Segunda tarefa"}
+		descriptions := []string{"First task", "Second task"}
 		for _, description := range descriptions {
 			args := []string{"task-cli", "add", description}
 			if err := addTask(args, filename); err != nil {
-				t.Fatalf("addTask() falhou: %v", err)
+				t.Fatalf("addTask() failed: %v", err)
 			}
 		}
 
-		database, err := readDB(filename)
+		database, err := readDatabase(filename)
 		if err != nil {
-			t.Fatalf("Não foi possível ler o arquivo informado: %v", err)
+			t.Fatalf("Could not read the provided file: %v", err)
 		}
 		if database.IdCount != 2 {
-			t.Errorf("Contador de IDs incorreto: got %d, want 2", database.IdCount)
+			t.Errorf("Incorrect ID counter: got %d, want 2", database.IdCount)
 		}
 		if len(database.Tasks) != len(descriptions) {
-			t.Fatalf("Quantidade de tarefas incorreta: got %d, want %d", len(database.Tasks), len(descriptions))
+			t.Fatalf("Incorrect number of tasks: got %d, want %d", len(database.Tasks), len(descriptions))
 		}
 		for index, task := range database.Tasks {
 			if task.Id != index+1 {
-				t.Errorf("ID incorreto na tarefa %d: got %d, want %d", index, task.Id, index+1)
+				t.Errorf("Incorrect ID in task %d: got %d, want %d", index, task.Id, index+1)
 			}
 			if task.Description != descriptions[index] {
-				t.Errorf("Descrição incorreta na tarefa %d: got %q, want %q", index, task.Description, descriptions[index])
+				t.Errorf("Incorrect description in task %d: got %q, want %q", index, task.Description, descriptions[index])
 			}
 			if task.Status != "todo" {
-				t.Errorf("Status incorreto na tarefa %d: got %q, want %q", index, task.Status, "todo")
+				t.Errorf("Incorrect status in task %d: got %q, want %q", index, task.Status, "todo")
 			}
 			if task.CreatedAt.IsZero() || task.UpdatedAt.IsZero() {
-				t.Errorf("Timestamps não foram preenchidos na tarefa %d: %+v", index, task)
+				t.Errorf("Timestamps were not filled in task %d: %+v", index, task)
 			}
 		}
 	})
 
-	t.Run("deve rejeitar descrição em branco sem alterar o banco", func(t *testing.T) {
+	t.Run("should reject blank description without changing the database", func(t *testing.T) {
 		filename := filepath.Join(t.TempDir(), FILE_NAME)
 		if err := saveDatabase(DB{IdCount: 3}, filename); err != nil {
-			t.Fatalf("Não foi possível preparar o banco: %v", err)
+			t.Fatalf("Could not prepare the database: %v", err)
 		}
 		args := []string{"task-cli", "add", ""}
 
 		if err := addTask(args, filename); err == nil {
-			t.Error("addTask() deveria rejeitar descrição vazia")
+			t.Error("addTask() should reject empty descriptions")
 		}
 
-		database, err := readDB(filename)
+		database, err := readDatabase(filename)
 		if err != nil {
-			t.Fatalf("Não foi possível ler o banco após rejeitar a descrição: %v", err)
+			t.Fatalf("Could not read the database after rejecting the description: %v", err)
 		}
 		if database.IdCount != 3 || len(database.Tasks) != 0 {
-			t.Errorf("O banco foi alterado: got %+v, want idCount 3 e nenhuma tarefa", database)
+			t.Errorf("The database changed: got %+v, want idCount 3 and no tasks", database)
 		}
 	})
 
-	t.Run("deve rejeitar argumentos sem descrição", func(t *testing.T) {
+	t.Run("should reject arguments without description", func(t *testing.T) {
 		filename := filepath.Join(t.TempDir(), FILE_NAME)
 		if err := addTask([]string{"task-cli", "add"}, filename); err == nil {
-			t.Error("addTask() deveria retornar erro quando a descrição não é informada")
+			t.Error("addTask() should return an error when description is not provided")
 		}
 		if _, err := os.Stat(filename); !os.IsNotExist(err) {
-			t.Errorf("O arquivo não deveria ser criado para argumentos inválidos; stat error: %v", err)
+			t.Errorf("The file should not be created for invalid arguments; stat error: %v", err)
 		}
 	})
 
-	t.Run("deve retornar erro quando não consegue salvar", func(t *testing.T) {
-		filename := filepath.Join(t.TempDir(), "diretorio-inexistente", FILE_NAME)
+	t.Run("should return an error when it cannot save", func(t *testing.T) {
+		filename := filepath.Join(t.TempDir(), "nonexistent-directory", FILE_NAME)
 		if err := saveDatabase(DB{}, filename); err == nil {
-			t.Error("saveDatabase() deveria retornar erro se o diretório não existir")
+			t.Error("saveDatabase() should return an error if the directory does not exist")
 		}
 	})
 }
@@ -162,14 +162,14 @@ func TestListTasks(t *testing.T) {
 	DBTest := DB{
 		IdCount: 8,
 		Tasks: []Task{
-			{Id: 1, Description: "Tarefa concluída 1", Status: "done", CreatedAt: timestamp, UpdatedAt: timestamp},
-			{Id: 2, Description: "Tarefa concluída 2", Status: "done", CreatedAt: timestamp, UpdatedAt: timestamp},
-			{Id: 3, Description: "Tarefa concluída 3", Status: "done", CreatedAt: timestamp, UpdatedAt: timestamp},
-			{Id: 4, Description: "Tarefa pendente 1", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
-			{Id: 5, Description: "Tarefa pendente 2", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
-			{Id: 6, Description: "Tarefa pendente 3", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
-			{Id: 7, Description: "Tarefa pendente 4", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
-			{Id: 8, Description: "Tarefa em andamento", Status: "in-progress", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 1, Description: "Completed task 1", Status: "done", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 2, Description: "Completed task 2", Status: "done", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 3, Description: "Completed task 3", Status: "done", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 4, Description: "Pending task 1", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 5, Description: "Pending task 2", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 6, Description: "Pending task 3", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 7, Description: "Pending task 4", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 8, Description: "In progress task", Status: "in-progress", CreatedAt: timestamp, UpdatedAt: timestamp},
 		},
 	}
 
@@ -177,55 +177,55 @@ func TestListTasks(t *testing.T) {
 		filterBy := args[2]
 		rTask, err := listTasks(args, filename)
 		if err != nil {
-			t.Errorf("Erro no retorno da listagem de tarefas em [%v]: %v", filterBy, err)
+			t.Errorf("Error in task list return for [%v]: %v", filterBy, err)
 		}
 		if len(rTask) != expect {
-			t.Errorf("Número de tarefas em [%v] diferente do esperado: got: %v, want: %v", filterBy, len(rTask), expect)
+			t.Errorf("Incorrect number of tasks in [%v]: got: %v, want: %v", filterBy, len(rTask), expect)
 		}
 	}
-	t.Run("deve ser capaz de listar todas as tarefas", func(t *testing.T) {
+	t.Run("should be able to list all tasks", func(t *testing.T) {
 		args := []string{"./task-cli", "list"}
 
 		filename := filepath.Join(t.TempDir(), FILE_NAME)
 		if err := saveDatabase(DBTest, filename); err != nil {
-			t.Error("Não foi possível escrever o mock no arquivo.", err)
+			t.Error("Could not write the mock file.", err)
 		}
 
 		rTask, err := listTasks(args, filename)
 		if err != nil {
-			t.Error("Erro no retorno da listagem todas as tarefas:", err)
+			t.Error("Error in the list all tasks return:", err)
 		}
 		if len(rTask) != DBTest.IdCount {
-			t.Errorf("Número de tarefas diferente do esperado. got: %v want: %v", len(rTask), DBTest.IdCount)
+			t.Errorf("Incorrect number of tasks. got: %v want: %v", len(rTask), DBTest.IdCount)
 		}
 	})
 
-	t.Run("deve ser capaz de listar tarefas com status [todo]", func(t *testing.T) {
+	t.Run("should be able to list tasks with status [todo]", func(t *testing.T) {
 		args := []string{"./task-cli", "list", "todo"}
 
 		filename := filepath.Join(t.TempDir(), FILE_NAME)
 		if err := saveDatabase(DBTest, filename); err != nil {
-			t.Error("Não foi possível escrever o mock no arquivo.", err)
+			t.Error("Could not write the mock file.", err)
 		}
 
 		filterByStatus(args, 4, filename, t)
 	})
-	t.Run("deve ser capaz de listar tarefas com status [done]", func(t *testing.T) {
+	t.Run("should be able to list tasks with status [done]", func(t *testing.T) {
 		args := []string{"./task-cli", "list", "done"}
 
 		filename := filepath.Join(t.TempDir(), FILE_NAME)
 		if err := saveDatabase(DBTest, filename); err != nil {
-			t.Error("Não foi possível escrever o mock no arquivo.", err)
+			t.Error("Could not write the mock file.", err)
 		}
 
 		filterByStatus(args, 3, filename, t)
 	})
-	t.Run("deve ser capaz de listar tarefas em [in-progress]", func(t *testing.T) {
+	t.Run("should be able to list tasks in [in-progress]", func(t *testing.T) {
 		args := []string{"./task-cli", "list", "in-progress"}
 
 		filename := filepath.Join(t.TempDir(), FILE_NAME)
 		if err := saveDatabase(DBTest, filename); err != nil {
-			t.Error("Não foi possível escrever o mock no arquivo.", err)
+			t.Error("Could not write the mock file.", err)
 		}
 
 		filterByStatus(args, 1, filename, t)
@@ -237,24 +237,24 @@ func TestDeleteTask(t *testing.T) {
 	DB := DB{
 		IdCount: 5,
 		Tasks: []Task{
-			{Id: 1, Description: "Tarefa mock 1", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
-			{Id: 2, Description: "Tarefa mock 2", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
-			{Id: 3, Description: "Tarefa mock 3", Status: "in-progress", CreatedAt: timestamp, UpdatedAt: timestamp},
-			{Id: 4, Description: "Tarefa mock 4", Status: "done", CreatedAt: timestamp, UpdatedAt: timestamp},
-			{Id: 5, Description: "Tarefa mock 5", Status: "done", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 1, Description: "Mock task 1", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 2, Description: "Mock task 2", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 3, Description: "Mock task 3", Status: "in-progress", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 4, Description: "Mock task 4", Status: "done", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 5, Description: "Mock task 5", Status: "done", CreatedAt: timestamp, UpdatedAt: timestamp},
 		},
 	}
 
 	tCount := func(filename string) int {
-		db, err := readDB(filename)
+		db, err := readDatabase(filename)
 		if err != nil {
-			t.Errorf("Não foi possivel acessar arquivo. %v", err)
+			t.Errorf("Could not access the file. %v", err)
 		}
 
 		return len(db.Tasks)
 	}
 
-	t.Run("deve ser capaz de remover um id que existe", func(t *testing.T) {
+	t.Run("should be able to remove an existing id", func(t *testing.T) {
 		args := []string{"./task-cli", "delete", "1"}
 		filename := filepath.Join(t.TempDir(), FILE_NAME)
 		saveDatabase(DB, filename)
@@ -268,11 +268,11 @@ func TestDeleteTask(t *testing.T) {
 		after := tCount(filename)
 
 		if after != before-1 {
-			t.Errorf("Registro não removido. got: %v, want: %v", after, before-1)
+			t.Errorf("Record was not removed. got: %v, want: %v", after, before-1)
 		}
 	})
 
-	t.Run("não deve remover id que não existe", func(t *testing.T) {
+	t.Run("should not remove a non-existent id", func(t *testing.T) {
 		args := []string{"./task-cli", "delete", "500"}
 
 		filename := filepath.Join(t.TempDir(), FILE_NAME)
@@ -281,16 +281,16 @@ func TestDeleteTask(t *testing.T) {
 		before := tCount(filename)
 
 		if _, err := deleteTask(args, filename); err == nil {
-			t.Error("Um erro era esperado. Não é permitido deletar task cujo id não existe.")
+			t.Error("An error was expected. Deleting a task whose id does not exist is not allowed.")
 		}
 
 		after := tCount(filename)
 		if before != after {
-			t.Errorf("Número de task diferente. got: %v, want: %v", after, before)
+			t.Errorf("Number of tasks different. got: %v, want: %v", after, before)
 		}
 	})
 
-	t.Run("não deve remover se id não fornecido", func(t *testing.T) {
+	t.Run("should not remove when id is not provided", func(t *testing.T) {
 		filename := filepath.Join(t.TempDir(), FILE_NAME)
 
 		args := []string{"./task-cli", "delete"}
@@ -299,12 +299,12 @@ func TestDeleteTask(t *testing.T) {
 		before := tCount(filename)
 
 		if _, err := deleteTask(args, filename); err == nil {
-			t.Error("Um erro era esperado. Não é permitido quando id não informado")
+			t.Error("An error was expected. This is not allowed when id is not provided")
 		}
 
 		after := tCount(filename)
 		if before != after {
-			t.Errorf("Número de task diferente. got: %v, want: %v", after, before)
+			t.Errorf("Number of tasks different. got: %v, want: %v", after, before)
 		}
 	})
 
@@ -314,23 +314,23 @@ func TestUpdateTask(t *testing.T) {
 	DBTest := DB{
 		IdCount: 3,
 		Tasks: []Task{
-			{Id: 1, Description: "Primeira tarefa", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
-			{Id: 2, Description: "Segunda tarefa", Status: "in-progress", CreatedAt: timestamp, UpdatedAt: timestamp},
-			{Id: 3, Description: "Terceira tarefa", Status: "done", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 1, Description: "First task", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 2, Description: "Second task", Status: "in-progress", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 3, Description: "Third task", Status: "done", CreatedAt: timestamp, UpdatedAt: timestamp},
 		},
 	}
 
-	t.Run("deve ser capaz de alterar uma task que existe", func(t *testing.T) {
+	t.Run("should be able to change a task that exists", func(t *testing.T) {
 		filename := filepath.Join(t.TempDir(), FILE_NAME)
 		saveDatabase(DBTest, filename)
 
-		newDesc := "escovar os dentes"
+		newDesc := "brush your teeth"
 		args := []string{"./task-cli", "update", "2", newDesc}
 		if err := updateTask(args, filename); err != nil {
-			t.Error("Task não atualizada", err)
+			t.Error("Task not updated", err)
 		}
 
-		updatedDB, _ := readDB(filename)
+		updatedDB, _ := readDatabase(filename)
 
 		taskId, _ := strconv.Atoi(args[2])
 		taskIndex := slices.IndexFunc(updatedDB.Tasks, func(tsk Task) bool {
@@ -338,27 +338,27 @@ func TestUpdateTask(t *testing.T) {
 		})
 		desc := updatedDB.Tasks[taskIndex].Description
 		if !strings.EqualFold(desc, newDesc) {
-			t.Errorf("Tarefa não foi atualizada. got: \"%v\", want: \"%v\"", desc, newDesc)
+			t.Errorf("Task was not updated. got: \"%v\", want: \"%v\"", desc, newDesc)
 		}
 	})
 
-	t.Run("deve recusar atualizar quando descrição não informada", func(t *testing.T) {
+	t.Run("should reject updating when description is not provided", func(t *testing.T) {
 		filename := filepath.Join(t.TempDir(), FILE_NAME)
 		saveDatabase(DBTest, filename)
 
 		args := []string{"./task-cli", "update", "2"}
 		if err := updateTask(args, filename); err == nil {
-			t.Error("Descrição não informada, um erro era esperado.")
+			t.Error("Description not provided, an error was expected.")
 		}
 	})
 
-	t.Run("deve recusar atualizar quando id não informado", func(t *testing.T) {
+	t.Run("should reject updating when id is not provided", func(t *testing.T) {
 		filename := filepath.Join(t.TempDir(), FILE_NAME)
 		saveDatabase(DBTest, filename)
 
-		args := []string{"./task-cli", "update", "banhar os cachorros"}
+		args := []string{"./task-cli", "update", "walk the dogs"}
 		if err := updateTask(args, filename); err == nil {
-			t.Error("Id não informado, um erro era esperado.")
+			t.Error("Id not provided, an error was expected.")
 		}
 	})
 }
@@ -368,8 +368,8 @@ func TestMarkTask(t *testing.T) {
 	DBTest := DB{
 		IdCount: 2,
 		Tasks: []Task{
-			{Id: 1, Description: "Primeira tarefa", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
-			{Id: 2, Description: "Segunda tarefa", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 1, Description: "First task", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 2, Description: "Second task", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
 		},
 	}
 
@@ -377,15 +377,15 @@ func TestMarkTask(t *testing.T) {
 		t.Helper()
 		filename := filepath.Join(t.TempDir(), FILE_NAME)
 		if err := saveDatabase(DBTest, filename); err != nil {
-			t.Errorf("Não foi possível salvar o mock do banco: %v", err)
+			t.Errorf("Could not save the database mock: %v", err)
 		}
 
 		args := []string{"./task-cli", command, "2"}
 		if err := markTask(args, filename); err != nil {
-			t.Errorf("Não foi capaz de marcar a tarefa como %s: %v", expectedStatus, err)
+			t.Errorf("Could not mark the task as %s: %v", expectedStatus, err)
 		}
 
-		database, _ := readDB(filename)
+		database, _ := readDatabase(filename)
 		taskId, _ := strconv.Atoi(args[2])
 		taskIndex := slices.IndexFunc(database.Tasks, func(tsk Task) bool {
 			return tsk.Id == taskId
@@ -393,40 +393,40 @@ func TestMarkTask(t *testing.T) {
 
 		task := &database.Tasks[taskIndex]
 		if task.Status != expectedStatus {
-			t.Errorf("Status da tarefa não foi atualizado. got: %v, want: %v", task.Status, expectedStatus)
+			t.Errorf("Task status was not updated. got: %v, want: %v", task.Status, expectedStatus)
 		}
 
 		if task.CreatedAt.Compare(task.UpdatedAt) != -1 {
-			t.Errorf("UpdatedAt da tarefa %v não foi atualizada junto com Status.", taskId)
+			t.Errorf("UpdatedAt for task %v was not updated along with Status.", taskId)
 		}
 	}
 
-	t.Run("Deve ser capaz de trocar status para done", func(t *testing.T) {
+	t.Run("should be able to change status to done", func(t *testing.T) {
 		assertStatusUpdated(t, "mark-done", "done")
 	})
-	t.Run("Deve ser capaz de trocar status para in-progress", func(t *testing.T) {
+	t.Run("should be able to change status to in-progress", func(t *testing.T) {
 		assertStatusUpdated(t, "mark-in-progress", "in-progress")
 	})
 
-	t.Run("Deve negar alterar status quando faltando operação não existir", func(t *testing.T) {
+	t.Run("should reject changing status when the operation does not exist", func(t *testing.T) {
 		filename := filepath.Join(t.TempDir(), FILE_NAME)
 		if err := saveDatabase(DBTest, filename); err != nil {
-			t.Fatalf("Não foi possível salvar o mock do banco: %v", err)
+			t.Fatalf("Could not save the database mock: %v", err)
 		}
 
-		before, err := readDB(filename)
+		before, err := readDatabase(filename)
 		if err != nil {
-			t.Fatalf("Não foi possível ler o banco antes da operação inválida: %v", err)
+			t.Fatalf("Could not read the database before the invalid operation: %v", err)
 		}
 
 		args := []string{"./task-cli", "mark-unknown", "2"}
 		if err := markTask(args, filename); err == nil {
-			t.Error("markTask() deveria retornar erro quando a operação não existe")
+			t.Error("markTask() should return an error when the operation does not exist")
 		}
 
-		after, err := readDB(filename)
+		after, err := readDatabase(filename)
 		if err != nil {
-			t.Fatalf("Não foi possível ler o banco após a operação inválida: %v", err)
+			t.Fatalf("Could not read the database after the invalid operation: %v", err)
 		}
 
 		taskId, _ := strconv.Atoi(args[2])
@@ -434,10 +434,10 @@ func TestMarkTask(t *testing.T) {
 		afterIndex := slices.IndexFunc(after.Tasks, func(tsk Task) bool { return tsk.Id == taskId })
 
 		if before.Tasks[beforeIndex].Status != after.Tasks[afterIndex].Status {
-			t.Errorf("O status da tarefa não deveria mudar para operação inválida. got: %v, want: %v", after.Tasks[afterIndex].Status, before.Tasks[beforeIndex].Status)
+			t.Errorf("Task status should not change for an invalid operation. got: %v, want: %v", after.Tasks[afterIndex].Status, before.Tasks[beforeIndex].Status)
 		}
 		if !before.Tasks[beforeIndex].UpdatedAt.Equal(after.Tasks[afterIndex].UpdatedAt) {
-			t.Errorf("UpdatedAt da tarefa foi alterado indevidamente para operação inválida.")
+			t.Errorf("UpdatedAt for the task was changed improperly for an invalid operation.")
 		}
 	})
 }

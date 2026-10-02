@@ -44,45 +44,45 @@ func Run(args []string) {
 	switch action {
 	case "add":
 		if err := addTask(args, FILE_NAME); err != nil {
-			fmt.Println("Não foi possível salvar a task.")
+			fmt.Println("Could not save the task.")
 			fmt.Println(err.Error())
 		}
 	case "list":
 		tasks, err := listTasks(args, FILE_NAME)
 		if err != nil {
-			fmt.Println("Erro na operação de filteragem:", err.Error())
+			fmt.Println("Error in filtering operation:", err.Error())
 			return
 		}
 
-		fmt.Printf("%v registros encontrados.\n", len(tasks))
-		fmt.Printf("\t  Id Estatus \t Descrição\n")
+		fmt.Printf("%v records found.\n", len(tasks))
+		fmt.Printf("\t  Id Status \t Description\n")
 
 		for _, t := range tasks {
 			fmt.Printf("\t- %02d [%v] \t %v\n", t.Id, t.Status, t.Description)
 		}
 	case "delete":
 		if task, err := deleteTask(args, FILE_NAME); err != nil {
-			fmt.Println("Erro na tentativa de remoção:", err)
+			fmt.Println("Error while trying to remove:", err)
 		} else {
-			fmt.Printf("task [%v %v] removida.\n", task.Id, task.Description)
+			fmt.Printf("task [%v %v] removed.\n", task.Id, task.Description)
 		}
 	case "update":
 		if err := updateTask(args, FILE_NAME); err != nil {
-			fmt.Println("Erro na atualização:", err)
+			fmt.Println("Update error:", err)
 		}
 	case "mark-in-progress", "mark-done":
 		if err := markTask(args, FILE_NAME); err != nil {
-			fmt.Println("Erro ao trocar status:", err)
+			fmt.Println("Error updating status:", err)
 		}
 	default:
-		fmt.Println("Operação não reconhecida")
+		fmt.Println("Operation not recognized")
 	}
 
 }
 
 func markTask(args []string, filename string) error {
 	if len(args) < 3 {
-		return errors.New("Operação e id são necessários.")
+		return errors.New("Operation and id are required.")
 	}
 
 	operation := args[1]
@@ -91,7 +91,7 @@ func markTask(args []string, filename string) error {
 		return err
 	}
 
-	database, err := readDB(filename)
+	database, err := readDatabase(filename)
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func markTask(args []string, filename string) error {
 	case "mark-done":
 		task.Status = "done"
 	default:
-		return fmt.Errorf("Operação %v não reconhecida.", operation)
+		return fmt.Errorf("Operation %v not recognized.", operation)
 	}
 
 	task.UpdatedAt = time.Now()
@@ -121,7 +121,7 @@ func markTask(args []string, filename string) error {
 
 func updateTask(args []string, filename string) error {
 	if len(args) < 4 {
-		return errors.New("Para atualizar a tarefa é necessario informa id e nova descrição.")
+		return errors.New("To update a task, you must provide the id and the new description.")
 	}
 
 	description := args[3]
@@ -130,7 +130,7 @@ func updateTask(args []string, filename string) error {
 		return err
 	}
 
-	database, err := readDB(filename)
+	database, err := readDatabase(filename)
 	if err != nil {
 		return err
 	}
@@ -154,15 +154,15 @@ func deleteTask(args []string, filename string) (Task, error) {
 	var removedTask Task
 
 	if len(args) < 3 {
-		return removedTask, errors.New("Id para remoção não informado.")
+		return removedTask, errors.New("Removal id not provided.")
 	}
 
 	id, err := strconv.Atoi(args[2])
 	if err != nil {
-		return removedTask, fmt.Errorf("Id informado deve ser número inteiro %v", err)
+		return removedTask, fmt.Errorf("Provided id must be an integer %v", err)
 	}
 
-	database, err := readDB(filename)
+	database, err := readDatabase(filename)
 	if err != nil {
 		return removedTask, err
 	}
@@ -172,7 +172,7 @@ func deleteTask(args []string, filename string) (Task, error) {
 	}); i >= 0 {
 		removedTask = database.Tasks[i]
 	} else {
-		return removedTask, fmt.Errorf("Id %v não encontrado.", id)
+		return removedTask, fmt.Errorf("Id %v not found.", id)
 	}
 
 	database.Tasks = slices.DeleteFunc(database.Tasks, func(t Task) bool {
@@ -190,18 +190,18 @@ func addTask(args []string, filename string) error {
 	var newTask Task
 
 	if len(args) < 3 {
-		return errors.New("Descrição não encontrada.")
+		return errors.New("Description not found.")
 	}
 
 	description := args[2]
 
 	if description == "" {
-		return errors.New("Tentativa de salvar Task com descrição vazia.")
+		return errors.New("Attempt to save a task with an empty description.")
 	}
 
-	db, err := readDB(filename)
+	db, err := readDatabase(filename)
 	if err != nil {
-		fmt.Println("Não foi possível acessar as tarefas")
+		fmt.Println("Unable to access tasks")
 		return err
 	}
 
@@ -235,7 +235,7 @@ func filter[T any](s []T, predicate func(T) bool) []T {
 }
 
 func listTasks(args []string, filename string) ([]Task, error) {
-	database, err := readDB(filename)
+	database, err := readDatabase(filename)
 
 	if err != nil {
 		return nil, err
@@ -255,7 +255,7 @@ func listTasks(args []string, filename string) ([]Task, error) {
 		}
 	}
 	if !isValid {
-		return nil, fmt.Errorf("Operção de listagem por \"%v\" não encontrada", listBy)
+		return nil, fmt.Errorf("List operation by \"%v\" not found", listBy)
 	}
 
 	filteredList := filter(database.Tasks, func(t Task) bool {
@@ -268,12 +268,12 @@ func listTasks(args []string, filename string) ([]Task, error) {
 func saveDatabase(db DB, filename string) error {
 	bytesToWrite, err := json.Marshal(db)
 	if err != nil {
-		fmt.Println("Não foi possível os dados.")
+		fmt.Println("Could not process data.")
 		return err
 	}
 
 	if err := os.WriteFile(filename, bytesToWrite, PERMISSIONS); err != nil {
-		fmt.Println("Não foi possível salvar o arquivo.")
+		fmt.Println("Could not save the file.")
 		return err
 	}
 
@@ -282,36 +282,31 @@ func saveDatabase(db DB, filename string) error {
 
 func printHelp() {
 	fmt.Println("===================== Task Cli ======================")
-	fmt.Println("Uso: task-cli <comando> [argumentos]")
-	fmt.Println("\nComandos disponíveis:")
-	fmt.Println("  add <descrição>              Cria uma nova tarefa")
-	fmt.Println("  update <id> <descrição>      Atualiza o texto de uma tarefa existente")
-	fmt.Println("  delete <id>                  Remove a tarefa <id>")
-	fmt.Println("  mark-in-progress <id>        Marca a tarefa <id> como \"in-progress\"")
-	fmt.Println("  mark-done <id>               Marca a tarefa <id> como \"done\"")
-	fmt.Println("  list                         Lista as tarefas")
-	fmt.Println("  list	done                   Lista as tarefas marcadas como \"done\"")
-	fmt.Println("  list	in-progress            Lista as tarefas marcadas como \"in-progress\"")
-	fmt.Println("  list	todo                   Lista as tarefas marcadas como \"todo\"")
-	fmt.Println(".")
-	fmt.Println(".")
-	fmt.Println(".")
+	fmt.Println("Usage: task-cli <command> [arguments]")
+	fmt.Println("\nAvailable commands:")
+	fmt.Println("  add <description>             Creates a new task")
+	fmt.Println("  update <id> <description>     Updates the text of an existing task")
+	fmt.Println("  delete <id>                   Removes task <id>")
+	fmt.Println("  mark-in-progress <id>         Marks task <id> as \"in-progress\"")
+	fmt.Println("  mark-done <id>                Marks task <id> as \"done\"")
+	fmt.Println("  list                          Lists tasks")
+	fmt.Println("  list	done                    Lists tasks marked as \"done\"")
+	fmt.Println("  list	in-progress             Lists tasks marked as \"in-progress\"")
+	fmt.Println("  list	todo                    Lists tasks marked as \"todo\"")
 }
 
-func readDB(filename string) (DB, error) {
+func readDatabase(filename string) (DB, error) {
 	var database DB
 
 	file, errFile := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, PERMISSIONS)
 	if errFile != nil {
-		fmt.Printf("Erro ao brir o arquivo.")
-		return database, errFile
+		return database, fmt.Errorf("Error opening file: %v", errFile)
 	}
 	defer file.Close()
 
 	blob, errBlob := io.ReadAll(file)
 	if errBlob != nil {
-		fmt.Printf("Erro na leitura do arquivo.")
-		return database, errBlob
+		return database, fmt.Errorf("Error reading file: %v", errBlob)
 	}
 
 	if len(blob) < 1 {
@@ -323,8 +318,7 @@ func readDB(filename string) (DB, error) {
 
 	err := json.Unmarshal(blob, &database)
 	if err != nil {
-		fmt.Println("Erro na converção na descerialização.")
-		return database, err
+		return database, fmt.Errorf("Conversion/deserialization error: %v", err)
 	}
 
 	return database, nil
