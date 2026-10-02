@@ -362,3 +362,82 @@ func TestUpdateTask(t *testing.T) {
 		}
 	})
 }
+
+func TestMarkTask(t *testing.T) {
+	timestamp := time.Now()
+	DBTest := DB{
+		IdCount: 2,
+		Tasks: []Task{
+			{Id: 1, Description: "Primeira tarefa", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
+			{Id: 2, Description: "Segunda tarefa", Status: "todo", CreatedAt: timestamp, UpdatedAt: timestamp},
+		},
+	}
+
+	assertStatusUpdated := func(t *testing.T, command, expectedStatus string) {
+		t.Helper()
+		filename := filepath.Join(t.TempDir(), FILE_NAME)
+		if err := saveDatabase(DBTest, filename); err != nil {
+			t.Errorf("Não foi possível salvar o mock do banco: %v", err)
+		}
+
+		args := []string{"./task-cli", command, "2"}
+		if err := markTask(args, filename); err != nil {
+			t.Errorf("Não foi capaz de marcar a tarefa como %s: %v", expectedStatus, err)
+		}
+
+		database, _ := readDB(filename)
+		taskId, _ := strconv.Atoi(args[2])
+		taskIndex := slices.IndexFunc(database.Tasks, func(tsk Task) bool {
+			return tsk.Id == taskId
+		})
+
+		task := &database.Tasks[taskIndex]
+		if task.Status != expectedStatus {
+			t.Errorf("Status da tarefa não foi atualizado. got: %v, want: %v", task.Status, expectedStatus)
+		}
+
+		if task.CreatedAt.Compare(task.UpdatedAt) != -1 {
+			t.Errorf("UpdatedAt da tarefa %v não foi atualizada junto com Status.", taskId)
+		}
+	}
+
+	t.Run("Deve ser capaz de trocar status para done", func(t *testing.T) {
+		assertStatusUpdated(t, "mark-done", "done")
+	})
+	t.Run("Deve ser capaz de trocar status para in-progress", func(t *testing.T) {
+		assertStatusUpdated(t, "mark-in-progress", "in-progress")
+	})
+
+	t.Run("Deve negar alterar status quando faltando operação não existir", func(t *testing.T) {
+		filename := filepath.Join(t.TempDir(), FILE_NAME)
+		if err := saveDatabase(DBTest, filename); err != nil {
+			t.Fatalf("Não foi possível salvar o mock do banco: %v", err)
+		}
+
+		before, err := readDB(filename)
+		if err != nil {
+			t.Fatalf("Não foi possível ler o banco antes da operação inválida: %v", err)
+		}
+
+		args := []string{"./task-cli", "mark-unknown", "2"}
+		if err := markTask(args, filename); err == nil {
+			t.Error("markTask() deveria retornar erro quando a operação não existe")
+		}
+
+		after, err := readDB(filename)
+		if err != nil {
+			t.Fatalf("Não foi possível ler o banco após a operação inválida: %v", err)
+		}
+
+		taskId, _ := strconv.Atoi(args[2])
+		beforeIndex := slices.IndexFunc(before.Tasks, func(tsk Task) bool { return tsk.Id == taskId })
+		afterIndex := slices.IndexFunc(after.Tasks, func(tsk Task) bool { return tsk.Id == taskId })
+
+		if before.Tasks[beforeIndex].Status != after.Tasks[afterIndex].Status {
+			t.Errorf("O status da tarefa não deveria mudar para operação inválida. got: %v, want: %v", after.Tasks[afterIndex].Status, before.Tasks[beforeIndex].Status)
+		}
+		if !before.Tasks[beforeIndex].UpdatedAt.Equal(after.Tasks[afterIndex].UpdatedAt) {
+			t.Errorf("UpdatedAt da tarefa foi alterado indevidamente para operação inválida.")
+		}
+	})
+}

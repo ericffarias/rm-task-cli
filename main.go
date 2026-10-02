@@ -47,7 +47,6 @@ func Run(args []string) {
 			fmt.Println("Não foi possível salvar a task.")
 			fmt.Println(err.Error())
 		}
-		return
 	case "list":
 		tasks, err := listTasks(args, FILE_NAME)
 		if err != nil {
@@ -61,21 +60,63 @@ func Run(args []string) {
 		for _, t := range tasks {
 			fmt.Printf("\t- %02d [%v] \t %v\n", t.Id, t.Status, t.Description)
 		}
-		return
 	case "delete":
 		if task, err := deleteTask(args, FILE_NAME); err != nil {
 			fmt.Println("Erro na tentativa de remoção:", err)
 		} else {
 			fmt.Printf("task [%v %v] removida.\n", task.Id, task.Description)
 		}
-		return
 	case "update":
 		if err := updateTask(args, FILE_NAME); err != nil {
 			fmt.Println("Erro na atualização:", err)
 		}
-		return
+	case "mark-in-progress", "mark-done":
+		if err := markTask(args, FILE_NAME); err != nil {
+			fmt.Println("Erro ao trocar status:", err)
+		}
+	default:
+		fmt.Println("Operação não reconhecida")
 	}
 
+}
+
+func markTask(args []string, filename string) error {
+	if len(args) < 3 {
+		return errors.New("Operação e id são necessários.")
+	}
+
+	operation := args[1]
+	taskId, err := strconv.Atoi(args[2])
+	if err != nil {
+		return err
+	}
+
+	database, err := readDB(filename)
+	if err != nil {
+		return err
+	}
+
+	taskIndex := slices.IndexFunc(database.Tasks, func(t Task) bool {
+		return t.Id == taskId
+	})
+	task := &database.Tasks[taskIndex]
+
+	switch operation {
+	case "mark-in-progress":
+		task.Status = "in-progress"
+	case "mark-done":
+		task.Status = "done"
+	default:
+		return fmt.Errorf("Operação %v não reconhecida.", operation)
+	}
+
+	task.UpdatedAt = time.Now()
+
+	if err := saveDatabase(database, filename); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func updateTask(args []string, filename string) error {
