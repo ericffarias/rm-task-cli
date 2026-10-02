@@ -4,6 +4,8 @@ A simple command-line task manager. This project practices handling positional a
 
 The application lets you create, edit, delete, and update the status of tasks, as well as list all tasks or filter them by status. Each task has an ID, description, status, creation timestamp, and last-updated timestamp. Data is stored in `data.json` in the current directory; the file is created automatically when needed.
 
+Roadmap Project Detail: https://roadmap.sh/projects/task-tracker
+
 ## Requirements
 
 - Go 1.27.1 or later
